@@ -1,0 +1,4 @@
+id,displayName,icon,path
+pesquisador-b3,Bruno Bolsa,🔎,./agents/pesquisador-b3.agent.md
+analista-fluxo,Ana Ativos,📊,./agents/analista-fluxo.agent.md
+revisor-mercado,Rafael Revisão,✅,./agents/revisor-mercado.agent.md

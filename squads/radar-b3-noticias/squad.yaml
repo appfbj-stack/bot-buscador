@@ -1,0 +1,27 @@
+squad:
+  code: radar-b3-noticias
+  name: Radar B3 Notícias
+  description: Monitora ativos da B3 e resume principais notícias e transações do dia
+  icon: 📈
+  agents:
+    - ./agents/pesquisador-b3.agent.md
+    - ./agents/analista-fluxo.agent.md
+    - ./agents/revisor-mercado.agent.md
+
+skills:
+  - web_search
+  - web_fetch
+
+data:
+  - pipeline/data/research-brief.md
+  - pipeline/data/domain-framework.md
+  - pipeline/data/quality-criteria.md
+  - pipeline/data/output-examples.md
+  - pipeline/data/anti-patterns.md
+
+pipeline:
+  steps:
+    - step-01-definir-foco
+    - step-02-pesquisar-mercado
+    - step-03-analisar-movimentos
+    - step-04-revisar-entrega

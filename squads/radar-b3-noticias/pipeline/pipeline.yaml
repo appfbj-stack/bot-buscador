@@ -1,0 +1,13 @@
+pipeline:
+  name: Radar B3 Notícias
+  checkpoints:
+    - step-01-definir-foco
+  steps:
+    - id: step-01-definir-foco
+      file: steps/step-01-definir-foco.md
+    - id: step-02-pesquisar-mercado
+      file: steps/step-02-pesquisar-mercado.md
+    - id: step-03-analisar-movimentos
+      file: steps/step-03-analisar-movimentos.md
+    - id: step-04-revisar-entrega
+      file: steps/step-04-revisar-entrega.md
