@@ -3,8 +3,18 @@ import { createServer } from "node:http";
 const port = Number(process.env.PORT || 3000);
 const botToken = process.env.TELEGRAM_BOT_TOKEN || "";
 const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET || "";
-const openAiApiKey = process.env.OPENAI_API_KEY || "";
-const openAiModel = process.env.OPENAI_MODEL || "gpt-4o-mini";
+const llmProvider = (process.env.LLM_PROVIDER || "openai").toLowerCase();
+const llmApiKey =
+  process.env.LLM_API_KEY ||
+  process.env.OPENAI_API_KEY ||
+  process.env.DEEPSEEK_API_KEY ||
+  "";
+const llmModel =
+  process.env.LLM_MODEL ||
+  process.env.OPENAI_MODEL ||
+  (llmProvider === "deepseek" ? "deepseek-chat" : "gpt-4o-mini");
+const openAiEndpoint = process.env.OPENAI_ENDPOINT || "https://api.openai.com/v1/responses";
+const deepSeekEndpoint = process.env.DEEPSEEK_ENDPOINT || "https://api.deepseek.com/chat/completions";
 
 function json(res, status, payload) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
@@ -41,18 +51,44 @@ async function sendTelegramMessage(chatId, message) {
 }
 
 async function getAiReply(userText) {
-  if (!openAiApiKey) {
+  if (!llmApiKey) {
     return `Recebi: ${userText}`;
   }
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    if (llmProvider === "deepseek") {
+      const response = await fetch(deepSeekEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${llmApiKey}`,
+        },
+        body: JSON.stringify({
+          model: llmModel,
+          messages: [
+            { role: "system", content: "Responda em português do Brasil de forma curta e útil." },
+            { role: "user", content: userText },
+          ],
+        }),
+      });
+      if (!response.ok) {
+        return `Recebi: ${userText}`;
+      }
+      const data = await response.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (typeof content === "string" && content.trim()) {
+        return content.trim();
+      }
+      return `Recebi: ${userText}`;
+    }
+
+    const response = await fetch(openAiEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${openAiApiKey}`,
+        Authorization: `Bearer ${llmApiKey}`,
       },
       body: JSON.stringify({
-        model: openAiModel,
+        model: llmModel,
         input: `Responda em português do Brasil de forma curta e útil:\n\n${userText}`,
       }),
     });
@@ -60,7 +96,7 @@ async function getAiReply(userText) {
       return `Recebi: ${userText}`;
     }
     const data = await response.json();
-    if (typeof data.output_text === "string" && data.output_text.trim()) {
+    if (typeof data?.output_text === "string" && data.output_text.trim()) {
       return data.output_text.trim();
     }
     return `Recebi: ${userText}`;
