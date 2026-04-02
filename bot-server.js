@@ -1,20 +1,28 @@
 import { createServer } from "node:http";
 
+function getEnv(...names) {
+  for (const name of names) {
+    const value = process.env[name];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+}
+
 const port = Number(process.env.PORT || 3000);
-const botToken = process.env.TELEGRAM_BOT_TOKEN || "";
-const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET || "";
-const llmProvider = (process.env.LLM_PROVIDER || "openai").toLowerCase();
+const botToken = getEnv("TELEGRAM_BOT_TOKEN", "TELEGRAMBOTTOKEN");
+const webhookSecret = getEnv("TELEGRAM_WEBHOOK_SECRET", "TELEGRAMWEBHOOKSECRET");
+const llmProvider = (getEnv("LLM_PROVIDER", "LLMPROVIDER") || "openai").toLowerCase();
 const llmApiKey =
-  process.env.LLM_API_KEY ||
-  process.env.OPENAI_API_KEY ||
-  process.env.DEEPSEEK_API_KEY ||
+  getEnv("LLM_API_KEY", "OPENAI_API_KEY", "DEEPSEEK_API_KEY", "DEEPSEEKAPIKEY") ||
   "";
 const llmModel =
-  process.env.LLM_MODEL ||
-  process.env.OPENAI_MODEL ||
+  getEnv("LLM_MODEL", "OPENAI_MODEL", "LLMMODEL") ||
   (llmProvider === "deepseek" ? "deepseek-chat" : "gpt-4o-mini");
 const openAiEndpoint = process.env.OPENAI_ENDPOINT || "https://api.openai.com/v1/responses";
 const deepSeekEndpoint = process.env.DEEPSEEK_ENDPOINT || "https://api.deepseek.com/chat/completions";
+const hasValidTelegramToken = /^\d+:[A-Za-z0-9_-]{20,}$/.test(botToken);
 
 function json(res, status, payload) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
@@ -36,7 +44,7 @@ async function readBody(req) {
 }
 
 async function sendTelegramMessage(chatId, message) {
-  if (!botToken) {
+  if (!botToken || !hasValidTelegramToken) {
     return;
   }
   const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
@@ -112,7 +120,19 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && req.url === "/health") {
-      return json(res, 200, { status: "healthy" });
+      return json(res, 200, {
+        status: "healthy",
+        telegram: {
+          tokenConfigured: Boolean(botToken),
+          tokenFormatValid: hasValidTelegramToken,
+          webhookSecretConfigured: Boolean(webhookSecret),
+        },
+        llm: {
+          provider: llmProvider,
+          apiKeyConfigured: Boolean(llmApiKey),
+          model: llmModel,
+        },
+      });
     }
 
     if (req.method === "POST" && req.url === "/webhook/telegram") {
@@ -146,4 +166,14 @@ const server = createServer(async (req, res) => {
 
 server.listen(port, "0.0.0.0", () => {
   console.log(`bot-buscador online na porta ${port}`);
+  console.log(
+    JSON.stringify({
+      telegramTokenConfigured: Boolean(botToken),
+      telegramTokenFormatValid: hasValidTelegramToken,
+      telegramWebhookSecretConfigured: Boolean(webhookSecret),
+      llmProvider,
+      llmApiKeyConfigured: Boolean(llmApiKey),
+      llmModel,
+    }),
+  );
 });
